@@ -1,0 +1,8 @@
+[package]
+name = "turing-script"
+version = "0.1.0"
+authors = ["laitmatus"]
+edition = "2018"
+
+[dependencies]
+combine = "3.8.1"
