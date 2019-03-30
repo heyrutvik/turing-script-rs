@@ -45,7 +45,7 @@ pub mod ast {
                 Term::Operation(s) => write!(f, "{}", s),
                 Term::Machine(n, r) => write!(f, "(machine {} \n({}))", n, r),
                 Term::Rule(mc, s, os, fc) =>
-                    write!(f, "(rule {} {} [{}] {})",
+                    write!(f, "({} {} [{}] {})",
                         mc,
                         s,
                         os.iter().map(|i| i.to_string()).collect::<Vec<String>>().join(","),
