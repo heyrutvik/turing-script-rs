@@ -19,6 +19,13 @@ rule := "(" ident symbol operation ident ")"
 operation := "[" sep_by(right | left | none | print, ",") "]"
 **/
 
+static MACHINE: &str = "machine";
+static TABLE: &str = "table";
+static ROUND_OPEN: char = '(';
+static ROUND_CLOSE: char = ')';
+static BOX_OPEN: char = '[';
+static BOX_CLOSE: char = ']';
+
 pub fn parse(m: &str) -> Term {
     match machine().parse(m) {
         Ok((t, _)) => t,
@@ -45,14 +52,14 @@ fn operation<I>() -> impl Parser<Input = I, Output = Vec<Term>>
     let right = char('R').map(|_| Term::Operation(Step::R));
     let left = char('L').map(|_| Term::Operation(Step::L));
     let none = char('N').map(|_| Term::Operation(Step::N));
-    let print = (char('P'), many(alpha_num())).map(|(_, sym)| Term::Operation(Step::P(Rc::new(Term::Symbol(sym)))));
-    (char('['), sep_by(right.or(left).or(none).or(print), char(',').skip(spaces())), char(']')).map(|(_, v,_ )| v)
+    let print = (char('P'), symbol()).map(|(_, sym)| Term::Operation(Step::P(Rc::new(sym))));
+    (char(BOX_OPEN), sep_by(right.or(left).or(none).or(print), char(',').skip(spaces())), char(BOX_CLOSE)).map(|(_, v,_ )| v)
 }
 
 fn rule<I>() -> impl Parser<Input = I, Output = Term>
     where I: Stream<Item = char>, I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    (char('(').skip(spaces()), ident().skip(spaces()), symbol().skip(spaces()), operation().skip(spaces()), ident().skip(spaces()), char(')'))
+    (char(ROUND_OPEN).skip(spaces()), ident().skip(spaces()), symbol().skip(spaces()), operation().skip(spaces()), ident().skip(spaces()), char(ROUND_CLOSE))
     .map(|(_, mc, sym, vop, fc, _)| {
         Term::Rule(
             Rc::new(mc),
@@ -66,7 +73,7 @@ fn rule<I>() -> impl Parser<Input = I, Output = Term>
 fn table<I>() -> impl Parser<Input = I, Output = Term>
     where I: Stream<Item = char>, I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    (char('('), string("table").skip(spaces()), sep_by(rule(), spaces()), char(')'))
+    (char(ROUND_OPEN), string(TABLE).skip(spaces()), sep_by(rule(), spaces()), char(ROUND_CLOSE))
     .map(|(_, _, rs, _): (_, _, Vec<Term>, _)| {
         Term::Table(Rc::new(rule_seq(&rs)))
      })
@@ -75,7 +82,7 @@ fn table<I>() -> impl Parser<Input = I, Output = Term>
 fn machine<I>() -> impl Parser<Input = I, Output = Term>
     where I: Stream<Item = char>, I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    (char('(').skip(spaces()), string("machine").skip(spaces()), ident().skip(spaces()), table(), char(')'))
+    (char(ROUND_OPEN).skip(spaces()), string(MACHINE).skip(spaces()), ident().skip(spaces()), table(), char(ROUND_CLOSE))
     .map(|(_, _, name, t, _)| { Term::Machine(Rc::new(name), Rc::new(t)) })
 }
 
