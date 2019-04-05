@@ -4,7 +4,7 @@ use std::rc::Rc;
 use crate::core::ast::Term;
 use crate::core::ast::Step;
 use combine::parser::char::{char, letter, spaces, alpha_num, string};
-use combine::{many, many1, sep_by, Parser, one_of, choice};
+use combine::{many, many1, sep_by, Parser, one_of};
 use combine::error::{ParseError};
 use combine::stream::{Stream};
 
@@ -27,7 +27,7 @@ static BOX_OPEN: char = '[';
 static BOX_CLOSE: char = ']';
 
 pub fn parse(m: &str) -> Term {
-    match machine().parse(m) {
+    match term().parse(m) {
         Ok((t, _)) => t,
         Err(_) => panic!(""),
     }
