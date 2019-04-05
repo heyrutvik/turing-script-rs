@@ -1,13 +1,16 @@
 #![feature(slice_concat_ext)]
+#![feature(slice_patterns)]
 mod core;
+mod parser;
 
 use std::rc::Rc;
 use crate::core::ast::Term;
 use crate::core::ast::Term::*;
 use crate::core::ast::Step::*;
+use crate::parser as ap;
 
 fn main() {
-    println!("{}", m());
+    println!("{}", ap::parse("(machine name (table (a 0 [P0, R] b) (b 1 [P1, L] a)))"));
 }
 
 fn m() -> Term {
