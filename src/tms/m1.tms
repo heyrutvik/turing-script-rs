@@ -1,0 +1,4 @@
+(machine m1->010101
+  (table
+    (a 0 [P1, L] b)
+    (b 1 [P0, R] a)))

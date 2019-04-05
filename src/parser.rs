@@ -1,12 +1,11 @@
-extern crate combine;
-
 use std::rc::Rc;
 use crate::core::ast::Term;
 use crate::core::ast::Step;
 use combine::parser::char::{char, letter, spaces, alpha_num, string};
-use combine::{many, many1, sep_by, Parser, one_of};
+use combine::{many, choice, many1, sep_by, Parser, one_of, parser};
 use combine::error::{ParseError};
 use combine::stream::{Stream};
+use combine::attempt;
 
 /**
 
@@ -29,18 +28,8 @@ static BOX_CLOSE: char = ']';
 pub fn parse(m: &str) -> Term {
     match term().parse(m) {
         Ok((t, _)) => t,
-        Err(_) => panic!(""),
+        Err(e) => panic!("[{}]", e),
     }
-}
-
-fn term<I>() -> impl Parser<Input = I, Output = Term>
-    where I: Stream<Item = char>, I::Error: ParseError<I::Item, I::Range, I::Position>,
-{
-    machine()
-        .or(table())
-        .or(rule())
-        .or(symbol())
-        .or(ident())
 }
 
 fn ident<I>() -> impl Parser<Input = I, Output = Term>
@@ -59,10 +48,10 @@ fn symbol<I>() -> impl Parser<Input = I, Output = Term>
 fn operation<I>() -> impl Parser<Input = I, Output = Vec<Term>>
     where I: Stream<Item = char>, I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    let right = char('R').map(|_| Term::Operation(Step::R));
-    let left = char('L').map(|_| Term::Operation(Step::L));
-    let none = char('N').map(|_| Term::Operation(Step::N));
-    let print = (char('P'), symbol()).map(|(_, sym)| Term::Operation(Step::P(Rc::new(sym))));
+    let right = char('R').map(|_| Term::Exec(Step::Right));
+    let left = char('L').map(|_| Term::Exec(Step::Left));
+    let none = char('N').map(|_| Term::Exec(Step::None));
+    let print = (char('P'), symbol()).map(|(_, sym)| Term::Exec(Step::Print(Rc::new(sym))));
     (char(BOX_OPEN), sep_by(right.or(left).or(none).or(print), char(',').skip(spaces())), char(BOX_CLOSE)).map(|(_, v,_ )| v)
 }
 
@@ -92,8 +81,28 @@ fn table<I>() -> impl Parser<Input = I, Output = Term>
 fn machine<I>() -> impl Parser<Input = I, Output = Term>
     where I: Stream<Item = char>, I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    (char(ROUND_OPEN).skip(spaces()), string(MACHINE).skip(spaces()), ident().skip(spaces()), term(), char(ROUND_CLOSE))
+    (char(ROUND_OPEN).skip(spaces()), string(MACHINE).skip(spaces()), ident().skip(spaces()), term().skip(spaces()), char(ROUND_CLOSE))
         .map(|(_, _, name, t, _)| { Term::Machine(Rc::new(name), Rc::new(t)) })
+}
+
+fn term_<I>() -> impl Parser<Input = I, Output = Term>
+    where I: Stream<Item = char>, I::Error: ParseError<I::Item, I::Range, I::Position>,
+{
+    choice((
+        attempt(machine()),
+        attempt(table()),
+        attempt(rule()),
+        attempt(symbol()),
+        attempt(ident()),
+    ))
+}
+
+parser! {
+    fn term[I]()(I) -> Term
+    where [I: Stream<Item = char>]
+    {
+        term_()
+    }
 }
 
 fn rule_seq(vs: &[Term]) -> Term {

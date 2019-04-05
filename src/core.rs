@@ -1,14 +1,14 @@
 pub mod ast {
     use std::rc::Rc;
 
-    #[derive(Debug, Clone)]
+    #[derive(Debug, Clone, PartialEq)]
     pub enum Term {
         // identifier: for machine name and configuration names
         Ident(String),
         // symbol: to write on tape
         Symbol(String),
-        // operation: head operation on tape
-        Operation(Step),
+        // execute: head operation on tape
+        Exec(Step),
         // machine: name and instruction
         Machine(Rc<Term>, Rc<Term>),
         // table rule: m-config, symbol, operations, f-config
@@ -19,11 +19,11 @@ pub mod ast {
         Table(Rc<Term>)
     }
 
-    #[derive(Debug, Clone)]
+    #[derive(Debug, Clone, PartialEq)]
     pub enum Step {
-        P(Rc<Term>),
-        R,
-        L,
-        N
+        Print(Rc<Term>),
+        Right,
+        Left,
+        None
     }
 }

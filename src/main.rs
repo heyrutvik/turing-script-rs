@@ -1,5 +1,9 @@
 #![feature(slice_concat_ext)]
 #![feature(slice_patterns)]
+#[macro_use]
+#[warn(deprecated)]
+extern crate combine;
+
 mod core;
 mod parser;
 
@@ -13,6 +17,7 @@ fn main() {
     if filename.ends_with(".tms") {
         let contents = fs::read_to_string(filename)
             .expect("File read error...");
+        print!("{}", contents);
         let ast = ap::parse(&contents);
         println!("{:?}", ast);
     } else {
