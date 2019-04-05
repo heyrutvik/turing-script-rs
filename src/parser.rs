@@ -4,7 +4,7 @@ use std::rc::Rc;
 use crate::core::ast::Term;
 use crate::core::ast::Step;
 use combine::parser::char::{char, letter, spaces, alpha_num, string};
-use combine::{many, many1, sep_by, Parser, one_of};
+use combine::{many, many1, sep_by, Parser, one_of, choice};
 use combine::error::{ParseError};
 use combine::stream::{Stream};
 
@@ -12,9 +12,9 @@ use combine::stream::{Stream};
 
 not a complete grammer, but enough for the context
 
-term := machine
-machine := "(" "machine" ident table ")"
-table := "(" "table" many1(rule) ")"
+term := machine | table | rule | symbol | ident
+machine := "(" "machine" ident term ")"
+table := "(" "table" many1(term) ")"
 rule := "(" ident symbol operation ident ")"
 operation := "[" sep_by(right | left | none | print, ",") "]"
 **/
@@ -31,6 +31,16 @@ pub fn parse(m: &str) -> Term {
         Ok((t, _)) => t,
         Err(_) => panic!(""),
     }
+}
+
+fn term<I>() -> impl Parser<Input = I, Output = Term>
+    where I: Stream<Item = char>, I::Error: ParseError<I::Item, I::Range, I::Position>,
+{
+    machine()
+        .or(table())
+        .or(rule())
+        .or(symbol())
+        .or(ident())
 }
 
 fn ident<I>() -> impl Parser<Input = I, Output = Term>
@@ -60,30 +70,30 @@ fn rule<I>() -> impl Parser<Input = I, Output = Term>
     where I: Stream<Item = char>, I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     (char(ROUND_OPEN).skip(spaces()), ident().skip(spaces()), symbol().skip(spaces()), operation().skip(spaces()), ident().skip(spaces()), char(ROUND_CLOSE))
-    .map(|(_, mc, sym, vop, fc, _)| {
-        Term::Rule(
-            Rc::new(mc),
-            Rc::new(sym),
-            vop,
-            Rc::new(fc)
-        )
-    })
+        .map(|(_, mc, sym, vop, fc, _)| {
+            Term::Rule(
+                Rc::new(mc),
+                Rc::new(sym),
+                vop,
+                Rc::new(fc)
+            )
+        })
 }
 
 fn table<I>() -> impl Parser<Input = I, Output = Term>
     where I: Stream<Item = char>, I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    (char(ROUND_OPEN), string(TABLE).skip(spaces()), sep_by(rule(), spaces()), char(ROUND_CLOSE))
-    .map(|(_, _, rs, _): (_, _, Vec<Term>, _)| {
-        Term::Table(Rc::new(rule_seq(&rs)))
-     })
+    (char(ROUND_OPEN), string(TABLE).skip(spaces()), sep_by(term(), spaces()), char(ROUND_CLOSE))
+        .map(|(_, _, rs, _): (_, _, Vec<Term>, _)| {
+            Term::Table(Rc::new(rule_seq(&rs)))
+         })
 }
 
 fn machine<I>() -> impl Parser<Input = I, Output = Term>
     where I: Stream<Item = char>, I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    (char(ROUND_OPEN).skip(spaces()), string(MACHINE).skip(spaces()), ident().skip(spaces()), table(), char(ROUND_CLOSE))
-    .map(|(_, _, name, t, _)| { Term::Machine(Rc::new(name), Rc::new(t)) })
+    (char(ROUND_OPEN).skip(spaces()), string(MACHINE).skip(spaces()), ident().skip(spaces()), term(), char(ROUND_CLOSE))
+        .map(|(_, _, name, t, _)| { Term::Machine(Rc::new(name), Rc::new(t)) })
 }
 
 fn rule_seq(vs: &[Term]) -> Term {
