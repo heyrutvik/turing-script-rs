@@ -1,8 +1,7 @@
 pub mod ast {
     use std::rc::Rc;
-    use std::fmt;
-    use std::slice::SliceConcatExt;
 
+    #[derive(Debug)]
     pub enum Term {
         // identifier: for machine name and configuration names
         Ident(String),
@@ -20,30 +19,12 @@ pub mod ast {
         Table(Rc<Term>)
     }
 
+    #[derive(Debug)]
     pub enum Step {
         P(Rc<Term>),
         R,
         L,
         N
-    }
-
-    impl fmt::Display for Term {
-        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            match self {
-                Term::Ident(s) => write!(f, "{}", s),
-                Term::Symbol(s) => write!(f, "{}", s),
-                Term::Operation(s) => write!(f, "{}", s),
-                Term::Machine(n, r) => write!(f, "(machine {} \n({}))", n, r),
-                Term::Rule(mc, s, os, fc) =>
-                    write!(f, "({} {} [{}] {})",
-                        mc,
-                        s,
-                        os.iter().map(|i| i.to_string()).collect::<Vec<String>>().join(","),
-                        fc),
-                Term::Seq(fst, snd) => write!(f, "{}\n{}", fst, snd),
-                Term::Table(seq) => write!(f, "table \n{}", seq),
-            }
-        }
     }
 
     impl Clone for Term {
@@ -56,17 +37,6 @@ pub mod ast {
                 Term::Rule(mc, s, os, fc) => Term::Rule(mc.clone(), s.clone(), os.clone(), fc.clone()),
                 Term::Seq(fst, snd) => Term::Seq(fst.clone(), snd.clone()),
                 Term::Table(seq) => Term::Table(seq.clone()),
-            }
-        }
-    }
-
-    impl fmt::Display for Step {
-        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            match self {
-                Step::P(t) => write!(f, "P{}", t),
-                Step::R => write!(f, "R"),
-                Step::L => write!(f, "L"),
-                Step::N => write!(f, "N"),
             }
         }
     }
