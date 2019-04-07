@@ -1,4 +1,6 @@
-(machine m1->010101
+(machine compute-the-sequence-0101010...
   (table
-    (a 0 [P1, L] b)
-    (b 1 [P0, R] a)))
+    (b none [P0,R] c)
+    (c none [R] e)
+    (e none [P1,R] f)
+    (f none [R] b)))

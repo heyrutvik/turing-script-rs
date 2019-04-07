@@ -1,0 +1,13 @@
+(machine compute-the-sequence-0010110111011110...
+  (table
+    (b none [Pe, R, Pe, R, P0, R, R, P0, L, L] o)
+    (o 1 [R, Px, L, L, L] o)
+    (o 0 [] q)
+    (q 0 [R, R] q)
+    (q 1 [R, R] q)
+    (q none [P1, L] p)
+    (p x [E, R] q)
+    (p e [R] f)
+    (p none [L,L] p)
+    (f _ [R,R] f)
+    (f none [P0,L,L] o)))
