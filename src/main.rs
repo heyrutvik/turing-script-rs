@@ -8,6 +8,7 @@ extern crate combine;
 mod core;
 mod parser;
 mod elaborator;
+mod helper;
 
 use std::env;
 use std::fs;
@@ -22,7 +23,12 @@ fn main() {
         println!("File content:");
         print!("{}", contents);
         let ast = ap::parse(&contents);
-        let ast = elaborator::exec_step(ast);
+        let ast = elaborator::step(ast);
+        println!("AST:");
+        println!("{:?}", ast);
+        println!("Code:");
+        println!("{}", ast);
+        let ast = elaborator::rule(ast);
         println!("AST:");
         println!("{:?}", ast);
         println!("Code:");

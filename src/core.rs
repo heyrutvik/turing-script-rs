@@ -81,8 +81,8 @@ pub mod ast {
                         s,
                         os.iter().map(|i| i.to_string()).collect::<Vec<String>>().join(","),
                         fc),
-                Term::Seq(fst, snd) => write!(f, "{} {}", fst, snd),
-                Term::Table(seq) => write!(f, "table {}", seq),
+                Term::Seq(fst, snd) => write!(f, "{}\n{}", fst, snd),
+                Term::Table(seq) => write!(f, "table \n{}", seq),
                 Term::Machine(n, r) => write!(f, "(machine {} ({}))", n, r),
             }
         }

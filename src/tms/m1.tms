@@ -1,6 +1,6 @@
 (machine compute-the-sequence-0101010...
   (table
-    (b none [P0,R] c)
-    (c none [R] e)
-    (e none [P1,R] f)
-    (f none [R] b)))
+    (b blank [P0,R] c)
+    (c blank [R] e)
+    (e blank [P1,R] f)
+    (f blank [R] b)))

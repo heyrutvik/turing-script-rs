@@ -4,6 +4,7 @@ use combine::{many, choice, many1, sep_by, Parser, one_of, parser, between};
 use combine::error::{ParseError};
 use combine::stream::{Stream};
 use combine::attempt;
+use crate::helper;
 
 /**
 
@@ -19,7 +20,8 @@ operation := "[" sep_by(right | left | none | print | erase, ",") "]"
 // keywords
 static MACHINE: &str = "machine";
 static TABLE: &str = "table";
-static ANY: &str = "any";
+static BLANK: &str = "blank"; // empty square
+static ANY: &str = "any"; // non-empty square
 // chars
 static ROUND_OPEN: char = '(';
 static ROUND_CLOSE: char = ')';
@@ -38,7 +40,14 @@ fn ident<I>() -> impl Parser<Input = I, Output = Term>
     where I: Stream<Item = char>, I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     let allowed_chars = || one_of("!$%&|*+-/:<=>?@^_~#.".chars());
-    (letter(), many(alpha_num().or(allowed_chars()))).map(|(c, str): (char, String)| Term::Ident(format!("{}{}", c, str)))
+    (letter(), many(alpha_num().or(allowed_chars()))).map(|(c, str): (char, String)| {
+        let ident = format!("{}{}", c, str);
+        if vec!(MACHINE, TABLE, BLANK, ANY).contains(&&ident[..]) {
+            panic!("[{}] is one of the reserved keywords, can't be used as an identifier.", ident);
+        } else {
+            Term::Ident(format!("{}{}", c, str))
+        }
+    })
 }
 
 fn symbol<I>() -> impl Parser<Input = I, Output = Term>
@@ -87,7 +96,7 @@ fn table<I>() -> impl Parser<Input = I, Output = Term>
 {
     (char(ROUND_OPEN), string(TABLE).skip(spaces()), sep_by(term(), spaces()), char(ROUND_CLOSE))
         .map(|(_, _, rs, _): (_, _, Vec<Term>, _)| {
-            Term::Table(box rule_seq(&rs))
+            Term::Table(box helper::rule_seq(&rs))
          })
 }
 
@@ -115,13 +124,5 @@ parser! {
     where [I: Stream<Item = char>]
     {
         term_()
-    }
-}
-
-fn rule_seq(vs: &[Term]) -> Term {
-    match vs {
-        [last] => last.clone(),
-        [head, rest..] => Term::Seq(box head.clone(), box rule_seq(rest)),
-        [] => unreachable!(),
     }
 }
