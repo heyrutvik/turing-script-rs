@@ -1,13 +1,14 @@
 pub mod ast {
     use std::fmt;
     use std::slice::SliceConcatExt;
+    use itertools::Itertools;
 
     #[derive(Debug, Clone, PartialEq)]
     pub enum Term {
         // identifier: for machine name and configuration names
         Ident(String),
         // symbol: to write on tape
-        Symbol(String),
+        Symbol(Sym),
         // execute: head operation on tape
         Exec(Step),
         // table rule: m-config, symbol, operations, f-config
@@ -20,11 +21,50 @@ pub mod ast {
         Machine(Box<Term>, Box<Term>),
     }
 
+    impl Term {
+        pub fn symbols(&self) -> Vec<Sym> {
+            let mut vs = vec!();
+            self._symbols(&mut vs);
+            vs.into_iter().unique().collect()
+        }
+
+        fn _symbols(&self, ss:&mut Vec<Sym>) {
+            match self {
+                Term::Ident(_) | Term::Exec(_) => {},
+                Term::Symbol(s) => {
+                    match s {
+                        Sym::Any => {},
+                        Sym::Blank => {},
+                        Sym::Dyn => {},
+                        _ => ss.push(s.clone()),
+                    }
+                },
+                Term::Rule(box _, box sym, _, box _) => {
+                    sym._symbols(ss);
+                },
+                Term::Machine(_, box t) => t._symbols(ss),
+                Term::Table(box rs) => rs._symbols(ss),
+                Term::Seq(box f, box s) => {
+                        f._symbols(ss);
+                        s._symbols(ss);
+                },
+            }
+        }
+    }
+
+    #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+    pub enum Sym {
+        String(String),
+        Blank,
+        Any,
+        Dyn,
+    }
+
     #[derive(Debug, Clone, PartialEq)]
     pub enum Step {
         Effect(Kind),
-        Move(Dir),
         Dynamic,
+        Move(Dir),
     }
 
     #[derive(Debug, Clone, PartialEq)]
@@ -41,6 +81,18 @@ pub mod ast {
     }
 
     // Display
+
+    impl fmt::Display for Sym {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            match self {
+                Sym::String(s) => write!(f, "{}", s),
+                Sym::Blank => write!(f, "blank"),
+                Sym::Any => write!(f, "any"),
+                Sym::Dyn => write!(f, "$$"),
+            }
+        }
+    }
+
     impl fmt::Display for Kind {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
             match self {
@@ -73,7 +125,8 @@ pub mod ast {
     impl fmt::Display for Term {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
             match self {
-                Term::Ident(s) | Term::Symbol(s) => write!(f, "{}", s),
+                Term::Ident(s) => write!(f, "{}", s),
+                Term::Symbol(s) => write!(f, "{}", s),
                 Term::Exec(s) => write!(f, "{}", s),
                 Term::Rule(mc, s, os, fc) =>
                     write!(f, "({} {} [{}] {})",
@@ -87,4 +140,13 @@ pub mod ast {
             }
         }
     }
+}
+
+pub mod standard {
+    #[derive(Debug, Clone)]
+    pub struct Rule { pub mc: usize, pub sym: usize, pub op: Op, pub fc: usize }
+    #[derive(Debug, Clone)]
+    pub enum Op { R(Sym), L(Sym), N(Sym) }
+    #[derive(Debug, Clone)]
+    pub enum Sym { S(usize), D}
 }

@@ -1,4 +1,4 @@
-use crate::core::ast::{Term, Step, Kind, Dir};
+use crate::core::ast::{Term, Step, Kind, Dir, Sym};
 use combine::parser::char::{char, letter, spaces, alpha_num, string};
 use combine::{many, choice, many1, sep_by, Parser, one_of, parser, between};
 use combine::error::{ParseError};
@@ -20,8 +20,8 @@ operation := "[" sep_by(right | left | none | print | erase, ",") "]"
 // keywords
 static MACHINE: &str = "machine";
 static TABLE: &str = "table";
-static BLANK: &str = "blank"; // empty square
-static ANY: &str = "any"; // non-empty square
+pub static BLANK: &str = "blank"; // empty square
+pub static ANY: &str = "any"; // non-empty square
 // chars
 static ROUND_OPEN: char = '(';
 static ROUND_CLOSE: char = ')';
@@ -53,7 +53,15 @@ fn ident<I>() -> impl Parser<Input = I, Output = Term>
 fn symbol<I>() -> impl Parser<Input = I, Output = Term>
     where I: Stream<Item = char>, I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    many1(alpha_num()).map(|s| Term::Symbol(s))
+    many1(alpha_num()).map(|s| {
+        if s == BLANK {
+            Term::Symbol(Sym::Blank)
+        } else if s == ANY {
+            Term::Symbol(Sym::Any)
+        } else {
+            Term::Symbol(Sym::String(s))
+        }
+    })
 }
 
 fn operation<I>() -> impl Parser<Input = I, Output = Vec<Term>>
@@ -77,7 +85,7 @@ fn rule<I>() -> impl Parser<Input = I, Output = Term>
     (
         char(ROUND_OPEN).skip(spaces()),
         ident().skip(spaces()),
-        choice((symbol(), char(UNDERSCORE).map(|_| Term::Symbol(ANY.to_string())))).skip(spaces()),
+        choice((symbol(), char(UNDERSCORE).map(|_| Term::Symbol(Sym::Any)))).skip(spaces()),
         operation(),
         ident().skip(spaces()),
         char(ROUND_CLOSE)

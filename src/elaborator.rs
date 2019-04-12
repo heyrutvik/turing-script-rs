@@ -1,8 +1,12 @@
 use std::collections::HashMap;
-use crate::core::ast::{Term, Step, Dir};
+use crate::core::ast::{Term, Step, Dir, Sym};
 use crate::helper;
 
-pub fn step(t: Term) -> Term {
+pub fn elaborate(t: Term) -> Term {
+    any(rule(step(t)))
+}
+
+fn step(t: Term) -> Term {
 
     fn expand(os: &[Term]) -> Vec<Term> {
         match os {
@@ -53,7 +57,7 @@ pub fn step(t: Term) -> Term {
     }
 }
 
-pub fn rule(t: Term) -> Term {
+fn rule(t: Term) -> Term {
 
     struct Env {
         names: HashMap<String, Vec<String>>,
@@ -90,7 +94,7 @@ pub fn rule(t: Term) -> Term {
                                 vts.push(
                                     Term::Rule(
                                         box Term::Ident(mc.to_string()),
-                                        box Term::Symbol(s.to_string()),
+                                        box Term::Symbol(s.clone()),
                                         chu.to_vec(),
                                         box Term::Ident(e.fresh(mc))
                                     )
@@ -99,7 +103,7 @@ pub fn rule(t: Term) -> Term {
                                 vts.push(
                                     Term::Rule(
                                         box Term::Ident(e.last(mc)),
-                                        box Term::Symbol(s.to_string()),
+                                        box Term::Symbol(Sym::Dyn),
                                         chu.to_vec(),
                                         box Term::Ident(fc.to_string())
                                     )
@@ -108,7 +112,7 @@ pub fn rule(t: Term) -> Term {
                                 vts.push(
                                     Term::Rule(
                                         box Term::Ident(e.last(mc)),
-                                        box Term::Symbol(s.to_string()),
+                                        box Term::Symbol(Sym::Dyn),
                                         chu.to_vec(),
                                         box Term::Ident(e.fresh(mc))
                                     )
@@ -133,4 +137,28 @@ pub fn rule(t: Term) -> Term {
     }
 
     _rule(t, &mut Env {names : HashMap::new()})
+}
+
+fn any(t: Term) -> Term {
+    let ss = t.symbols();
+    _any(t, &ss)
+}
+
+fn _any(t: Term, ss: &Vec<Sym>) -> Term {
+    match t {
+        Term::Ident(_) | Term::Symbol(_) | Term::Exec(_) => t,
+        Term::Seq(box f, box s) => helper::flatten_seq(&_any(f, ss), _any(s, ss)),
+        Term::Table(box is) => Term::Table(box _any(is, ss)),
+        Term::Machine(name, box is) => Term::Machine(name, box _any(is, ss)),
+        Term::Rule(mc, box Term::Symbol(Sym::Any), os, fc) => {
+            let v: Vec<Term> = ss.iter().map(|s| { Term::Rule(mc.clone(), box Term::Symbol(s.clone()), os.clone(), fc.clone()) }).collect();
+            helper::rule_seq(&v[..])
+        },
+        Term::Rule(mc, box Term::Symbol(Sym::Dyn), os, fc) => {
+            let mut v: Vec<Term> = ss.iter().map(|s| { Term::Rule(mc.clone(), box Term::Symbol(s.clone()), os.clone(), fc.clone()) }).collect();
+            v.push(Term::Rule(mc.clone(), box Term::Symbol(Sym::Blank), os.clone(), fc.clone()));
+            helper::rule_seq(&v[..])
+        },
+        Term::Rule(_, _, _, _) => t,
+    }
 }
