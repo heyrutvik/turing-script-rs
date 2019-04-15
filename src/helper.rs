@@ -11,9 +11,7 @@ pub fn rule_seq(vs: &[Term]) -> Term {
 pub fn flatten_seq(f: &Term, s: Term) -> Term {
     match f {
         Term::Rule(_, _, _, _) => Term::Seq(box f.clone(), box s),
-        Term::Seq(f1, s1) => {
-            Term::Seq(f1.clone(), box flatten_seq(s1, s))
-        },
+        Term::Seq(f1, s1) => Term::Seq(f1.clone(), box flatten_seq(s1, s)),
         _ => unreachable!(),
     }
 }

@@ -1,7 +1,7 @@
 pub mod ast {
+    use itertools::Itertools;
     use std::fmt;
     use std::slice::SliceConcatExt;
-    use itertools::Itertools;
 
     #[derive(Debug, Clone, PartialEq)]
     pub enum Term {
@@ -23,31 +23,29 @@ pub mod ast {
 
     impl Term {
         pub fn symbols(&self) -> Vec<Sym> {
-            let mut vs = vec!();
+            let mut vs = vec![];
             self._symbols(&mut vs);
             vs.into_iter().unique().collect()
         }
 
-        fn _symbols(&self, ss:&mut Vec<Sym>) {
+        fn _symbols(&self, ss: &mut Vec<Sym>) {
             match self {
-                Term::Ident(_) | Term::Exec(_) => {},
-                Term::Symbol(s) => {
-                    match s {
-                        Sym::Any => {},
-                        Sym::Blank => {},
-                        Sym::Dyn => {},
-                        _ => ss.push(s.clone()),
-                    }
+                Term::Ident(_) | Term::Exec(_) => {}
+                Term::Symbol(s) => match s {
+                    Sym::Any => {}
+                    Sym::Blank => {}
+                    Sym::Dyn => {}
+                    _ => ss.push(s.clone()),
                 },
                 Term::Rule(box _, box sym, _, box _) => {
                     sym._symbols(ss);
-                },
+                }
                 Term::Machine(_, box t) => t._symbols(ss),
                 Term::Table(box rs) => rs._symbols(ss),
                 Term::Seq(box f, box s) => {
-                        f._symbols(ss);
-                        s._symbols(ss);
-                },
+                    f._symbols(ss);
+                    s._symbols(ss);
+                }
             }
         }
     }
@@ -128,12 +126,17 @@ pub mod ast {
                 Term::Ident(s) => write!(f, "{}", s),
                 Term::Symbol(s) => write!(f, "{}", s),
                 Term::Exec(s) => write!(f, "{}", s),
-                Term::Rule(mc, s, os, fc) =>
-                    write!(f, "({} {} [{}] {})",
-                        mc,
-                        s,
-                        os.iter().map(|i| i.to_string()).collect::<Vec<String>>().join(","),
-                        fc),
+                Term::Rule(mc, s, os, fc) => write!(
+                    f,
+                    "({} {} [{}] {})",
+                    mc,
+                    s,
+                    os.iter()
+                        .map(|i| i.to_string())
+                        .collect::<Vec<String>>()
+                        .join(","),
+                    fc
+                ),
                 Term::Seq(fst, snd) => write!(f, "{}\n{}", fst, snd),
                 Term::Table(seq) => write!(f, "table \n{}", seq),
                 Term::Machine(n, r) => write!(f, "(machine {} ({}))", n, r),
@@ -144,9 +147,21 @@ pub mod ast {
 
 pub mod standard {
     #[derive(Debug, Clone)]
-    pub struct Rule { pub mc: usize, pub sym: usize, pub op: Op, pub fc: usize }
+    pub struct Rule {
+        pub mc: usize,
+        pub sym: usize,
+        pub op: Op,
+        pub fc: usize,
+    }
     #[derive(Debug, Clone)]
-    pub enum Op { R(Sym), L(Sym), N(Sym) }
+    pub enum Op {
+        R(Sym),
+        L(Sym),
+        N(Sym),
+    }
     #[derive(Debug, Clone)]
-    pub enum Sym { S(usize), D}
+    pub enum Sym {
+        S(usize),
+        D,
+    }
 }

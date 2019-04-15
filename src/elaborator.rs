@@ -1,50 +1,49 @@
-use std::collections::HashMap;
-use crate::core::ast::{Term, Step, Dir, Sym};
+use crate::core::ast::{Dir, Step, Sym, Term};
 use crate::helper;
+use std::collections::HashMap;
 
 pub fn elaborate(t: Term) -> Term {
     any(rule(step(t)))
 }
 
 fn step(t: Term) -> Term {
-
     fn expand(os: &[Term]) -> Vec<Term> {
         match os {
-            [Term::Exec(e1), Term::Exec(e2), rest..] => {
-                match (e1, e2) {
-                    (Step::Effect(_), Step::Effect(_)) => {
-                        let v1 = vec!(Term::Exec(e2.clone()), Term::Exec(Step::Move(Dir::None)));
-                        [&v1[..], &expand(rest)[..]].concat()
-                    },
-                    (Step::Effect(_), Step::Move(_)) => {
-                        let v1 = vec!(Term::Exec(e1.clone()), Term::Exec(e2.clone()));
-                        [&v1[..], &expand(rest)[..]].concat()
-                    },
-                    (Step::Move(_), Step::Effect(_)) => {
-                        let v1 = vec!(Term::Exec(Step::Dynamic), Term::Exec(e1.clone()),
-                                      Term::Exec(e2.clone()), Term::Exec(Step::Move(Dir::None)));
-                        [&v1[..], &expand(rest)[..]].concat()
-                    },
-                    (Step::Move(_), Step::Move(_)) => {
-                        let v1 = vec!(Term::Exec(Step::Dynamic), Term::Exec(e1.clone()),
-                                      Term::Exec(Step::Dynamic), Term::Exec(e2.clone()));
-                        [&v1[..], &expand(rest)[..]].concat()
-                    },
-                    _ => unreachable!()
+            [Term::Exec(e1), Term::Exec(e2), rest..] => match (e1, e2) {
+                (Step::Effect(_), Step::Effect(_)) => {
+                    let v1 = vec![Term::Exec(e2.clone()), Term::Exec(Step::Move(Dir::None))];
+                    [&v1[..], &expand(rest)[..]].concat()
                 }
-            },
-            [Term::Exec(e1)] => {
-                match e1 {
-                    Step::Effect(_) => {
-                        vec!(Term::Exec(e1.clone()), Term::Exec(Step::Move(Dir::None)))
-                    },
-                    Step::Move(_) => {
-                        vec!(Term::Exec(Step::Dynamic), Term::Exec(e1.clone()))
-                    },
-                    _ => unreachable!()
+                (Step::Effect(_), Step::Move(_)) => {
+                    let v1 = vec![Term::Exec(e1.clone()), Term::Exec(e2.clone())];
+                    [&v1[..], &expand(rest)[..]].concat()
                 }
+                (Step::Move(_), Step::Effect(_)) => {
+                    let v1 = vec![
+                        Term::Exec(Step::Dynamic),
+                        Term::Exec(e1.clone()),
+                        Term::Exec(e2.clone()),
+                        Term::Exec(Step::Move(Dir::None)),
+                    ];
+                    [&v1[..], &expand(rest)[..]].concat()
+                }
+                (Step::Move(_), Step::Move(_)) => {
+                    let v1 = vec![
+                        Term::Exec(Step::Dynamic),
+                        Term::Exec(e1.clone()),
+                        Term::Exec(Step::Dynamic),
+                        Term::Exec(e2.clone()),
+                    ];
+                    [&v1[..], &expand(rest)[..]].concat()
+                }
+                _ => unreachable!(),
             },
-            _ => vec!()
+            [Term::Exec(e1)] => match e1 {
+                Step::Effect(_) => vec![Term::Exec(e1.clone()), Term::Exec(Step::Move(Dir::None))],
+                Step::Move(_) => vec![Term::Exec(Step::Dynamic), Term::Exec(e1.clone())],
+                _ => unreachable!(),
+            },
+            _ => vec![],
         }
     }
 
@@ -58,18 +57,23 @@ fn step(t: Term) -> Term {
 }
 
 fn rule(t: Term) -> Term {
-
     struct Env {
         names: HashMap<String, Vec<String>>,
     }
 
     impl Env {
         pub fn last(&mut self, key: &str) -> String {
-            let elements = self.names.entry(key.to_string()).or_insert(vec!(key.to_string()));
+            let elements = self
+                .names
+                .entry(key.to_string())
+                .or_insert(vec![key.to_string()]);
             elements.last().unwrap().to_string()
         }
         pub fn fresh(&mut self, key: &str) -> String {
-            let elements = self.names.entry(key.to_string()).or_insert(vec!(key.to_string()));
+            let elements = self
+                .names
+                .entry(key.to_string())
+                .or_insert(vec![key.to_string()]);
             let n = format!("{}{}", elements.last().unwrap(), "'");
             elements.push(n.clone());
             n
@@ -77,52 +81,49 @@ fn rule(t: Term) -> Term {
     }
 
     fn _rule(t: Term, e: &mut Env) -> Term {
-
         fn expand(t: &Term, e: &mut Env) -> Vec<Term> {
             match t {
                 Term::Rule(box Term::Ident(mc), box Term::Symbol(s), os, box Term::Ident(fc)) => {
-                    if os.len() == 2 { // already two steps
-                        vec!(t.clone())
-                    } else { // steps more than two
-                        let mut vts: Vec<Term> = vec!();
+                    if os.len() == 2 {
+                        // already two steps
+                        vec![t.clone()]
+                    } else {
+                        // steps more than two
+                        let mut vts: Vec<Term> = vec![];
 
                         let osc = os.chunks(2);
                         let osc_len = osc.len();
 
                         for (i, chu) in osc.enumerate() {
-                            if i == 0 { // first
-                                vts.push(
-                                    Term::Rule(
-                                        box Term::Ident(mc.to_string()),
-                                        box Term::Symbol(s.clone()),
-                                        chu.to_vec(),
-                                        box Term::Ident(e.fresh(mc))
-                                    )
-                                )
-                            } else if i+1 == osc_len { // last
-                                vts.push(
-                                    Term::Rule(
-                                        box Term::Ident(e.last(mc)),
-                                        box Term::Symbol(Sym::Dyn),
-                                        chu.to_vec(),
-                                        box Term::Ident(fc.to_string())
-                                    )
-                                )
+                            if i == 0 {
+                                // first
+                                vts.push(Term::Rule(
+                                    box Term::Ident(mc.to_string()),
+                                    box Term::Symbol(s.clone()),
+                                    chu.to_vec(),
+                                    box Term::Ident(e.fresh(mc)),
+                                ))
+                            } else if i + 1 == osc_len {
+                                // last
+                                vts.push(Term::Rule(
+                                    box Term::Ident(e.last(mc)),
+                                    box Term::Symbol(Sym::Dyn),
+                                    chu.to_vec(),
+                                    box Term::Ident(fc.to_string()),
+                                ))
                             } else {
-                                vts.push(
-                                    Term::Rule(
-                                        box Term::Ident(e.last(mc)),
-                                        box Term::Symbol(Sym::Dyn),
-                                        chu.to_vec(),
-                                        box Term::Ident(e.fresh(mc))
-                                    )
-                                );
+                                vts.push(Term::Rule(
+                                    box Term::Ident(e.last(mc)),
+                                    box Term::Symbol(Sym::Dyn),
+                                    chu.to_vec(),
+                                    box Term::Ident(e.fresh(mc)),
+                                ));
                             }
                         }
                         vts
                     }
-                },
-                _ => unreachable!()
+                }
+                _ => unreachable!(),
             }
         }
 
@@ -136,7 +137,12 @@ fn rule(t: Term) -> Term {
         }
     }
 
-    _rule(t, &mut Env {names : HashMap::new()})
+    _rule(
+        t,
+        &mut Env {
+            names: HashMap::new(),
+        },
+    )
 }
 
 fn any(t: Term) -> Term {
@@ -151,14 +157,39 @@ fn _any(t: Term, ss: &Vec<Sym>) -> Term {
         Term::Table(box is) => Term::Table(box _any(is, ss)),
         Term::Machine(name, box is) => Term::Machine(name, box _any(is, ss)),
         Term::Rule(mc, box Term::Symbol(Sym::Any), os, fc) => {
-            let v: Vec<Term> = ss.iter().map(|s| { Term::Rule(mc.clone(), box Term::Symbol(s.clone()), os.clone(), fc.clone()) }).collect();
+            let v: Vec<Term> = ss
+                .iter()
+                .map(|s| {
+                    Term::Rule(
+                        mc.clone(),
+                        box Term::Symbol(s.clone()),
+                        os.clone(),
+                        fc.clone(),
+                    )
+                })
+                .collect();
             helper::rule_seq(&v[..])
-        },
+        }
         Term::Rule(mc, box Term::Symbol(Sym::Dyn), os, fc) => {
-            let mut v: Vec<Term> = ss.iter().map(|s| { Term::Rule(mc.clone(), box Term::Symbol(s.clone()), os.clone(), fc.clone()) }).collect();
-            v.push(Term::Rule(mc.clone(), box Term::Symbol(Sym::Blank), os.clone(), fc.clone()));
+            let mut v: Vec<Term> = ss
+                .iter()
+                .map(|s| {
+                    Term::Rule(
+                        mc.clone(),
+                        box Term::Symbol(s.clone()),
+                        os.clone(),
+                        fc.clone(),
+                    )
+                })
+                .collect();
+            v.push(Term::Rule(
+                mc.clone(),
+                box Term::Symbol(Sym::Blank),
+                os.clone(),
+                fc.clone(),
+            ));
             helper::rule_seq(&v[..])
-        },
+        }
         Term::Rule(_, _, _, _) => t,
     }
 }
